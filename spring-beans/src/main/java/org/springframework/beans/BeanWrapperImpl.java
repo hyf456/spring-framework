@@ -227,6 +227,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	@Override
 	@Nullable
 	protected BeanPropertyHandler getLocalPropertyHandler(String propertyName) {
+		//获取属性的描述符
 		PropertyDescriptor pd = getCachedIntrospectionResults().getPropertyDescriptor(propertyName);
 		return (pd != null ? new BeanPropertyHandler(pd) : null);
 	}
@@ -289,13 +290,18 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 		@Override
 		@Nullable
 		public Object getValue() throws Exception {
+			//获取属性的getter方法(读方法)，JDK内省机制
 			final Method readMethod = this.pd.getReadMethod();
+			//属性没有提供getter方法时，调用潜在的读取属性值的方法，获取属性值
 			if (System.getSecurityManager() != null) {
+				//如果属性的getter方法不是public访问控制权限的，即访问控制权限比较严格，
+				//则使用JDK的反射机制强行访问非public的方法(暴力读取属性值)
 				AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
 					ReflectionUtils.makeAccessible(readMethod);
 					return null;
 				});
 				try {
+					//匿名内部类，根据权限修改属性的读取控制限制
 					return AccessController.doPrivileged((PrivilegedExceptionAction<Object>) () ->
 							readMethod.invoke(getWrappedInstance(), (Object[]) null), acc);
 				}
@@ -311,9 +317,13 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 		@Override
 		public void setValue(final @Nullable Object value) throws Exception {
+			//根据JDK的内省机制，获取属性的setter(写方法)方法
+			//如果属性的setter方法是非public，即访问控制权限比较严格，则使用JDK的反射机制，
+			//强行设置setter方法可访问(暴力为属性赋值)
 			final Method writeMethod = (this.pd instanceof GenericTypeAwarePropertyDescriptor ?
 					((GenericTypeAwarePropertyDescriptor) this.pd).getWriteMethodForActualAccess() :
 					this.pd.getWriteMethod());
+			//如果使用了JDK的安全机制，则需要权限验证
 			if (System.getSecurityManager() != null) {
 				AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
 					ReflectionUtils.makeAccessible(writeMethod);
