@@ -293,7 +293,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			if (isPrototypeCurrentlyInCreation(beanName)) {
 				throw new BeanCurrentlyInCreationException(beanName);
 			}
-g
+
 			// Check if bean definition exists in this factory.
 			//对IOC容器中是否存在指定名称的BeanDefinition进行检查，首先检查是否
 			// 能在当前的BeanFactory中获取的所需要的Bean，如果不能则委托当前容器

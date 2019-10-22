@@ -100,6 +100,8 @@ configure(allprojects) { project ->
 			["-Xlint:-varargs", "-Xlint:-fallthrough", "-Xlint:-rawtypes",
 			 "-Xlint:-deprecation", "-Xlint:-unchecked"]
 
+	[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
 	compileJava {
 		sourceCompatibility = 1.8  // can be switched to 11 for testing
 		targetCompatibility = 1.8
@@ -111,6 +113,27 @@ configure(allprojects) { project ->
 		targetCompatibility = 1.8
 		options.encoding = "UTF-8"
 		options.compilerArgs += "-parameters"
+	}
+
+	//编译groovy代码时采用 UTF-8
+	tasks.withType(GroovyCompile) {
+		groovyOptions.encoding = "UTF-8"
+	}
+	//编译JAVA文件时采用UTF-8
+	tasks.withType(JavaCompile) {
+		options.encoding = "UTF-8"
+	}
+
+	//如果生成javadoc出现编码问题添加
+	javadoc {
+		options{
+			encoding "UTF-8"
+			charSet 'UTF-8'
+			author true
+			version true
+			links "http://docs.oracle.com/javase/7/docs/api"
+			title "这里写文档标题"
+		}
 	}
 
 	compileKotlin {

@@ -201,8 +201,14 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	}
 
 
+	/**
+	 * han 内置的 ResourceLoader 资源定位器
+	 */
 	private final ResourceLoader resourceLoader;
 
+	/**
+	 * Ant 路径匹配器
+	 */
 	private PathMatcher pathMatcher = new AntPathMatcher();
 
 
@@ -277,25 +283,31 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	@Override
 	public Resource[] getResources(String locationPattern) throws IOException {
 		Assert.notNull(locationPattern, "Location pattern must not be null");
+		// han 以 "classpath*:" 开头
 		if (locationPattern.startsWith(CLASSPATH_ALL_URL_PREFIX)) {
 			// a class path resource (multiple resources for same name possible)
+			// han 路径包含通配符
 			if (getPathMatcher().isPattern(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()))) {
 				// a class path resource pattern
 				return findPathMatchingResources(locationPattern);
+				// han 路径不包含通配符
 			}
 			else {
 				// all class path resources with the given name
 				return findAllClassPathResources(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()));
 			}
 		}
+		// han 不以 "classpath*:" 开头
 		else {
 			// Generally only look for a pattern after a prefix here,
 			// and on Tomcat only after the "*/" separator for its "war:" protocol.
 			int prefixEnd = (locationPattern.startsWith("war:") ? locationPattern.indexOf("*/") + 1 :
 					locationPattern.indexOf(':') + 1);
+			// 路径包含通配符
 			if (getPathMatcher().isPattern(locationPattern.substring(prefixEnd))) {
 				// a file pattern
 				return findPathMatchingResources(locationPattern);
+				// han 路径不包含通配符
 			}
 			else {
 				// a single resource with the given name
@@ -315,13 +327,16 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	 */
 	protected Resource[] findAllClassPathResources(String location) throws IOException {
 		String path = location;
+		// han 去除首个 /
 		if (path.startsWith("/")) {
 			path = path.substring(1);
 		}
+		// han 真正执行加载所有 classpath 资源
 		Set<Resource> result = doFindAllClassPathResources(path);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Resolved classpath location [" + location + "] to resources " + result);
 		}
+		// han 转换成 Resource 数组返回
 		return result.toArray(new Resource[0]);
 	}
 
@@ -335,14 +350,21 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	protected Set<Resource> doFindAllClassPathResources(String path) throws IOException {
 		Set<Resource> result = new LinkedHashSet<>(16);
 		ClassLoader cl = getClassLoader();
+		// han <1> 根据 ClassLoader 加载路径下的所有资源
+		//通过classloader来加载资源目录，这里也会去找寻classpath路径下的jar包或者zip包
 		Enumeration<URL> resourceUrls = (cl != null ? cl.getResources(path) : ClassLoader.getSystemResources(path));
+		// han <2>
 		while (resourceUrls.hasMoreElements()) {
 			URL url = resourceUrls.nextElement();
+			// han 将 URL 转换成 UrlResource
+			//对找到的路径保存为UrlResource对象放入set集合中
 			result.add(convertClassLoaderURL(url));
 		}
+		// han <3> 加载路径下的所有 jar 包
 		if ("".equals(path)) {
 			// The above result is likely to be incomplete, i.e. only containing file system references.
 			// We need to have pointers to each of the jar files on the classpath as well...
+			//加载jar协议的资源
 			addAllClassLoaderJarRoots(cl, result);
 		}
 		return result;
@@ -489,13 +511,20 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	 * @see org.springframework.util.PathMatcher
 	 */
 	protected Resource[] findPathMatchingResources(String locationPattern) throws IOException {
+		// han 确定根路径、子路径
+		//首先定位根目录路径，例如classpath*:com/question/
 		String rootDirPath = determineRootDir(locationPattern);
+		//默认为**/*.class
 		String subPattern = locationPattern.substring(rootDirPath.length());
+		// han 获取根据路径下的资源
+		//递归函数的调用，此处会调用PathMatchingResourcePatternResolver#findAllClassPathResources方法加载根目录，找寻classpath路径下的根目录全路径，包含jar、zip包
 		Resource[] rootDirResources = getResources(rootDirPath);
+		// han 遍历，迭代
 		Set<Resource> result = new LinkedHashSet<>(16);
 		for (Resource rootDirResource : rootDirResources) {
 			rootDirResource = resolveRootDirResource(rootDirResource);
 			URL rootDirUrl = rootDirResource.getURL();
+			// han bundle 资源类型
 			if (equinoxResolveMethod != null && rootDirUrl.getProtocol().startsWith("bundle")) {
 				URL resolvedUrl = (URL) ReflectionUtils.invokeMethod(equinoxResolveMethod, null, rootDirUrl);
 				if (resolvedUrl != null) {
@@ -503,12 +532,16 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 				}
 				rootDirResource = new UrlResource(rootDirUrl);
 			}
+			// han vfs 资源类型
 			if (rootDirUrl.getProtocol().startsWith(ResourceUtils.URL_PROTOCOL_VFS)) {
 				result.addAll(VfsResourceMatchingDelegate.findMatchingResources(rootDirUrl, subPattern, getPathMatcher()));
 			}
+			// han jar协议、zip协议、wsjar协议、vfszip协议
 			else if (ResourceUtils.isJarURL(rootDirUrl) || isJarResource(rootDirResource)) {
+				//从jar包中找寻相应的所有class文件
 				result.addAll(doFindPathMatchingJarResources(rootDirResource, rootDirUrl, subPattern));
 			}
+			// han //加载非jar、zip包的项目资源
 			else {
 				result.addAll(doFindPathMatchingFileResources(rootDirResource, subPattern));
 			}
@@ -516,6 +549,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 		if (logger.isTraceEnabled()) {
 			logger.trace("Resolved location pattern [" + locationPattern + "] to resources " + result);
 		}
+		// han 转换成 Resource 数组返回
 		return result.toArray(new Resource[0]);
 	}
 
@@ -531,15 +565,24 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	 * @return the part of the location that denotes the root directory
 	 * @see #retrieveMatchingFiles
 	 */
+	 //               原路径	                 确定根路径
+	 //  classpath*:test/cc*/spring-*.xml      classpath*:test/
+	 //  classpath*:test/aa/spring-*.xml    classpath*:test/cc*/spring-*.xml
 	protected String determineRootDir(String location) {
+		// han 找到冒号的最后一位
 		int prefixEnd = location.indexOf(':') + 1;
+		// han 根目录结束位置
 		int rootDirEnd = location.length();
+		// han 在从冒号开始到最后的字符串中，循环判断是否包含通配符，如果包含，则截断最后一个有"/"分割的部分，
+		// 例如：在我们路径中，就是最后的 ap？-context.xml 这一段。再循环判断剩下的部分，直到剩下的路径中都不包含通配符。
 		while (rootDirEnd > prefixEnd && getPathMatcher().isPattern(location.substring(prefixEnd, rootDirEnd))) {
 			rootDirEnd = location.lastIndexOf('/', rootDirEnd - 2) + 1;
 		}
+		// han 如果查找完成后，rootDirEnd = 0.7，则将之前赋值的 prefixEnd 的值赋给 rootDirEnd，也就是冒号的最后一位
 		if (rootDirEnd == 0) {
 			rootDirEnd = prefixEnd;
 		}
+		// han 截取根目录
 		return location.substring(0, rootDirEnd);
 	}
 
@@ -697,6 +740,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 
 		File rootDir;
 		try {
+			//获取绝对路径对应的file
 			rootDir = rootDirResource.getFile().getAbsoluteFile();
 		}
 		catch (FileNotFoundException ex) {
@@ -710,6 +754,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			if (logger.isInfoEnabled()) {
 				logger.info("Failed to resolve " + rootDirResource + " in the file system: " + ex);
 			}
+			//异常则返回空的集合
 			return Collections.emptySet();
 		}
 		return doFindMatchingFileSystemResources(rootDir, subPattern);
@@ -729,9 +774,11 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 		if (logger.isTraceEnabled()) {
 			logger.trace("Looking for matching resources in directory tree [" + rootDir.getPath() + "]");
 		}
+		//真实的调用方法
 		Set<File> matchingFiles = retrieveMatchingFiles(rootDir, subPattern);
 		Set<Resource> result = new LinkedHashSet<>(matchingFiles.size());
 		for (File file : matchingFiles) {
+			//对查找到的资源包装为FileSystemResource对象
 			result.add(new FileSystemResource(file));
 		}
 		return result;
@@ -747,6 +794,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	 * @throws IOException if directory contents could not be retrieved
 	 */
 	protected Set<File> retrieveMatchingFiles(File rootDir, String pattern) throws IOException {
+		//根目录不存在？返回空集合
 		if (!rootDir.exists()) {
 			// Silently skip non-existing directories.
 			if (logger.isDebugEnabled()) {
@@ -754,6 +802,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			}
 			return Collections.emptySet();
 		}
+		//不是目录？返回为空
 		if (!rootDir.isDirectory()) {
 			// Complain louder if it exists but is no directory.
 			if (logger.isInfoEnabled()) {
@@ -761,6 +810,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			}
 			return Collections.emptySet();
 		}
+		//不可读？返回为空
 		if (!rootDir.canRead()) {
 			if (logger.isInfoEnabled()) {
 				logger.info("Skipping search for matching files underneath directory [" + rootDir.getAbsolutePath() +
@@ -768,10 +818,12 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			}
 			return Collections.emptySet();
 		}
+		//转换根目录全路径为标准的查找路径
 		String fullPattern = StringUtils.replace(rootDir.getAbsolutePath(), File.separator, "/");
 		if (!pattern.startsWith("/")) {
 			fullPattern += "/";
 		}
+		//查找类型为.class文件
 		fullPattern = fullPattern + StringUtils.replace(pattern, File.separator, "/");
 		Set<File> result = new LinkedHashSet<>(8);
 		doRetrieveMatchingFiles(fullPattern, rootDir, result);
@@ -792,8 +844,11 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			logger.trace("Searching directory [" + dir.getAbsolutePath() +
 					"] for files matching pattern [" + fullPattern + "]");
 		}
+		//遍历
 		for (File content : listDirectory(dir)) {
+			//获取当前文件路径
 			String currPath = StringUtils.replace(content.getAbsolutePath(), File.separator, "/");
+			//查找到的子文件仍是目录且以根目录为开头
 			if (content.isDirectory() && getPathMatcher().matchStart(fullPattern, currPath + "/")) {
 				if (!content.canRead()) {
 					if (logger.isDebugEnabled()) {
@@ -802,9 +857,11 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 					}
 				}
 				else {
+					//递归调用查找所有的文件
 					doRetrieveMatchingFiles(fullPattern, content, result);
 				}
 			}
+			//查看当前文件路径是否满足**/*.class格式，满足则添加
 			if (getPathMatcher().match(fullPattern, currPath)) {
 				result.add(content);
 			}
@@ -819,8 +876,10 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 	 * @see File#listFiles()
 	 */
 	protected File[] listDirectory(File dir) {
+		//从根目录开始罗列文件集合
 		File[] files = dir.listFiles();
 		if (files == null) {
+			//查找到没有了则直接返回
 			if (logger.isInfoEnabled()) {
 				logger.info("Could not retrieve contents of directory [" + dir.getAbsolutePath() + "]");
 			}
