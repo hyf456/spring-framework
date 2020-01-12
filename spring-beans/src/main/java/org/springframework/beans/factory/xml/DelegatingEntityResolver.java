@@ -57,6 +57,7 @@ public class DelegatingEntityResolver implements EntityResolver {
 	 * {@link ClassLoader}.
 	 * @param classLoader the ClassLoader to use for loading
 	 * (can be {@code null}) to use the default ClassLoader)
+	 *  han 默认
 	 */
 	public DelegatingEntityResolver(@Nullable ClassLoader classLoader) {
 		this.dtdResolver = new BeansDtdResolver();
@@ -68,6 +69,7 @@ public class DelegatingEntityResolver implements EntityResolver {
 	 * the given {@link EntityResolver EntityResolvers}.
 	 * @param dtdResolver the EntityResolver to resolve DTDs with
 	 * @param schemaResolver the EntityResolver to resolve XML schemas with
+	 * han 自定义
 	 */
 	public DelegatingEntityResolver(EntityResolver dtdResolver, EntityResolver schemaResolver) {
 		Assert.notNull(dtdResolver, "'dtdResolver' is required");
@@ -81,9 +83,11 @@ public class DelegatingEntityResolver implements EntityResolver {
 	@Nullable
 	public InputSource resolveEntity(String publicId, @Nullable String systemId) throws SAXException, IOException {
 		if (systemId != null) {
+			// han DTD 模式
 			if (systemId.endsWith(DTD_SUFFIX)) {
 				return this.dtdResolver.resolveEntity(publicId, systemId);
 			}
+			// han XSD 模式
 			else if (systemId.endsWith(XSD_SUFFIX)) {
 				return this.schemaResolver.resolveEntity(publicId, systemId);
 			}

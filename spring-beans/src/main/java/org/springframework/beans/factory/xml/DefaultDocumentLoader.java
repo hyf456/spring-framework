@@ -71,13 +71,16 @@ public class DefaultDocumentLoader implements DocumentLoader {
 			ErrorHandler errorHandler, int validationMode, boolean namespaceAware) throws Exception {
 
 		//创建文件解析器工厂
+		// han <1> 创建 DocumentBuilderFactory
 		DocumentBuilderFactory factory = createDocumentBuilderFactory(validationMode, namespaceAware);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Using JAXP provider [" + factory.getClass().getName() + "]");
 		}
 		//创建文档解析器
+		// han <2> 创建 DocumentBuilder
 		DocumentBuilder builder = createDocumentBuilder(factory, entityResolver, errorHandler);
 		//解析Spring的Bean定义资源
+		// han <3> 解析 XML InputSource 返回 Document 对象
 		return builder.parse(inputSource);
 	}
 
@@ -93,15 +96,21 @@ public class DefaultDocumentLoader implements DocumentLoader {
 	protected DocumentBuilderFactory createDocumentBuilderFactory(int validationMode, boolean namespaceAware)
 			throws ParserConfigurationException {
 
+		// han 创建 DocumentBuilderFactory
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		// han 设置命名空间支持
 		factory.setNamespaceAware(namespaceAware);
 
 		//设置解析XML的校验
 		if (validationMode != XmlValidationModeDetector.VALIDATION_NONE) {
+			// han 开启校验
 			factory.setValidating(true);
+			// han XSD 模式下，设置 factory 的属性
 			if (validationMode == XmlValidationModeDetector.VALIDATION_XSD) {
 				// Enforce namespace aware for XSD...
+				// han XSD 模式下，强制设置命名空间支持
 				factory.setNamespaceAware(true);
+				// han 设置 SCHEMA_LANGUAGE_ATTRIBUTE
 				try {
 					factory.setAttribute(SCHEMA_LANGUAGE_ATTRIBUTE, XSD_SCHEMA_LANGUAGE);
 				}
@@ -135,10 +144,13 @@ public class DefaultDocumentLoader implements DocumentLoader {
 			throws ParserConfigurationException {
 
 		//创建文档解析工厂
+		// han 创建 DocumentBuilder 对象
 		DocumentBuilder docBuilder = factory.newDocumentBuilder();
+		// han <x> 设置 EntityResolver 属性
 		if (entityResolver != null) {
 			docBuilder.setEntityResolver(entityResolver);
 		}
+		// han 设置 ErrorHandler 属性
 		if (errorHandler != null) {
 			docBuilder.setErrorHandler(errorHandler);
 		}

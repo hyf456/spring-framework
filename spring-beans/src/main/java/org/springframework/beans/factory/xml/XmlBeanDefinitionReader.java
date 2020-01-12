@@ -79,21 +79,25 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 
 	/**
 	 * Indicates that the validation should be disabled.
+	 * han 禁用验证模式
 	 */
 	public static final int VALIDATION_NONE = XmlValidationModeDetector.VALIDATION_NONE;
 
 	/**
 	 * Indicates that the validation mode should be detected automatically.
+	 * han 自动验证模式
 	 */
 	public static final int VALIDATION_AUTO = XmlValidationModeDetector.VALIDATION_AUTO;
 
 	/**
 	 * Indicates that DTD validation should be used.
+	 * han DTD 验证模式
 	 */
 	public static final int VALIDATION_DTD = XmlValidationModeDetector.VALIDATION_DTD;
 
 	/**
 	 * Indicates that XSD validation should be used.
+	 * han XSD 验证模式
 	 */
 	public static final int VALIDATION_XSD = XmlValidationModeDetector.VALIDATION_XSD;
 
@@ -124,8 +128,12 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 
 	private ErrorHandler errorHandler = new SimpleSaxErrorHandler(logger);
 
+	/**
+	 * XML 验证模式探测器
+	 */
 	private final XmlValidationModeDetector validationModeDetector = new XmlValidationModeDetector();
 
+	// han 当前线程，正在加载的 EncodedResource 集合。
 	private final ThreadLocal<Set<EncodedResource>> resourcesCurrentlyBeingLoaded =
 			new NamedThreadLocal<>("XML bean definition resources currently being loaded");
 
@@ -255,6 +263,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	/**
 	 * Return the EntityResolver to use, building a default resolver
 	 * if none specified.
+	 *  han EntityResolver 解析器
 	 */
 	protected EntityResolver getEntityResolver() {
 		if (this.entityResolver == null) {
@@ -320,24 +329,29 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			logger.trace("Loading XML bean definitions from " + encodedResource);
 		}
 
+		// han <1> 获取已经加载过的资源
 		Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
 		if (currentResources == null) {
 			currentResources = new HashSet<>(4);
 			this.resourcesCurrentlyBeingLoaded.set(currentResources);
 		}
+		// han 将当前资源加入记录中，如果已经存在，抛出异常
 		if (!currentResources.add(encodedResource)) {
 			throw new BeanDefinitionStoreException(
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 		try {
+			// han <2> 从 encodeResources 中获取封装的 resource，并从 resource 中获取其中的 InputStream
 			//将资源文件转为InputStream的IO流
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
 				//从InputStream中得到XML的解析源
 				InputSource inputSource = new InputSource(inputStream);
+				// han 设置编码
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
+				// han 核心逻辑部分，执行加载 BeanDefinition
 				//这里是具体的读取过程
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
@@ -351,6 +365,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"IOException parsing XML document from " + encodedResource.getResource(), ex);
 		}
 		finally {
+			// han <3> 从缓存中剔除该资源
 			currentResources.remove(encodedResource);
 			if (currentResources.isEmpty()) {
 				this.resourcesCurrentlyBeingLoaded.remove();
@@ -397,8 +412,10 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			throws BeanDefinitionStoreException {
 
 		try {
+			// han <1> 获取 XML Document 实例
 			//将XML文件转换为DOM对象，解析过程有documentLoader实现
 			Document doc = doLoadDocument(inputSource, resource);
+			// han <2> 根据 Document 实例，注册 Bean 信息
 			//这里是启动对Bean定义解析的详细过程，该解析过程会用到Spring的Bean配置规则
 			int count = registerBeanDefinitions(doc, resource);
 			if (logger.isDebugEnabled()) {
@@ -452,12 +469,16 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * <p>Override this method if you would like full control over the validation
 	 * mode, even when something other than {@link #VALIDATION_AUTO} was set.
 	 * @see #detectValidationMode
+	 * han 验证模式默认为自动验证模式
 	 */
 	protected int getValidationModeForResource(Resource resource) {
+		// han <1> 获取指定的验证模式
 		int validationModeToUse = getValidationMode();
+		// han 首先，如果手动指定则直接返回
 		if (validationModeToUse != VALIDATION_AUTO) {
 			return validationModeToUse;
 		}
+		// han <2> 其次，自动获取验证模式
 		int detectedMode = detectValidationMode(resource);
 		if (detectedMode != VALIDATION_AUTO) {
 			return detectedMode;
@@ -465,6 +486,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 		// Hmm, we didn't get a clear indication... Let's assume XSD,
 		// since apparently no DTD declaration has been found up until
 		// detection stopped (before finding the document's root tag).
+		// han 最后使用 VALIDATION_XSD 作为验证模式
 		return VALIDATION_XSD;
 	}
 
@@ -476,6 +498,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * of the {@link #VALIDATION_AUTO} mode.
 	 */
 	protected int detectValidationMode(Resource resource) {
+		// han 不可读， 抛出 BeanDefinitionStoreException 异常
 		if (resource.isOpen()) {
 			throw new BeanDefinitionStoreException(
 					"Passed-in Resource [" + resource + "] contains an open stream: " +
@@ -484,6 +507,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"on your XmlBeanDefinitionReader instance.");
 		}
 
+		// han 打开 InputStream 流
 		InputStream inputStream;
 		try {
 			inputStream = resource.getInputStream();
@@ -495,6 +519,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"validationMode on your XmlBeanDefinitionReader instance?", ex);
 		}
 
+		// han 获取相应的验证模式
 		try {
 			return this.validationModeDetector.detectValidationMode(inputStream);
 		}
