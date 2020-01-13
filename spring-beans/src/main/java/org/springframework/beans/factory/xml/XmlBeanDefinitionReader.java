@@ -545,11 +545,15 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	//按照Spring的Bean语义要求将Bean定义资源解析并转换为容器内部数据结构
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
 		//得到BeanDefinitionDocumentReader来对xml格式的BeanDefinition解析
+		// han <1> 创建 BeanDefinitionDocumentReader 对象
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
 		//获得容器中注册的Bean数量
+		// han <2> 获取已注册的 BeanDefinition 数量
 		int countBefore = getRegistry().getBeanDefinitionCount();
 		//解析过程入口，这里使用了委派模式，BeanDefinitionDocumentReader只是个接口，
 		//具体的解析实现过程有实现类DefaultBeanDefinitionDocumentReader完成
+		// han <3> 创建 XmlReaderContext 对象
+		// han <4> 注册 BeanDefinition
 		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
 		//统计解析的Bean数量
 		return getRegistry().getBeanDefinitionCount() - countBefore;

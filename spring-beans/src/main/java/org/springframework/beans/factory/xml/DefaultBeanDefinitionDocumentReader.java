@@ -96,6 +96,8 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		//获得XML描述符
 		this.readerContext = readerContext;
 		//获得Document的根元素
+		// han 获得 XML Document Root Element
+		// han 执行注册 BeanDefinition
 		doRegisterBeanDefinitions(doc.getDocumentElement());
 	}
 
@@ -128,18 +130,23 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
+		// han 记录老的 BeanDefinitionParserDelegate 对象
 		BeanDefinitionParserDelegate parent = this.delegate;
 		//具体的解析过程有BeanDefinitionParserDelegate实现，
 		// BeanDefinitionParserDelegate中定义了Spring Bean定义XML问价你的各种元素
+		// han <1> 创建 BeanDefinitionParserDelegate 对象，并进行设置到 delegate
 		this.delegate = createDelegate(getReaderContext(), root, parent);
-
+		// han <2> 检查 <beans /> 根标签的命名空间是否为空，或者是 http://www.springframework.org/schema/beans
 		if (this.delegate.isDefaultNamespace(root)) {
+			// han <2.1> 处理 profile 属性。可参见《Spring3自定义环境配置 <beans profile="">》http://nassir.iteye.com/blog/1535799
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
+				// han <2.2> 使用分隔符切分，可能有多个 profile 。
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
 						profileSpec, BeanDefinitionParserDelegate.MULTI_VALUE_ATTRIBUTE_DELIMITERS);
 				// We cannot use Profiles.of(...) since profile expressions are not supported
 				// in XML config. See SPR-12458 for details.
+				// han <2.3> 如果所有 profile 都无效，则不进行注册
 				if (!getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Skipped XML bean definition file due to specified profiles [" + profileSpec +
@@ -151,12 +158,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 
 		//在解析Bean定义之前，进行自定义的解析，增加解析过程的可扩展性
+		// han <3> 解析前处理
 		preProcessXml(root);
 		//从Document的根元素开始进行Bean定义的Document对象
+		// han <4> 解析
 		parseBeanDefinitions(root, this.delegate);
 		//在解析Bean定义之后，进行自定义的解析，增加解析过程的可扩展性
+		// han <5> 解析后处理
 		postProcessXml(root);
-
+		// han 设置 delegate 回老的 BeanDefinitionParserDelegate 对象
 		this.delegate = parent;
 	}
 
@@ -164,8 +174,10 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	protected BeanDefinitionParserDelegate createDelegate(
 			XmlReaderContext readerContext, Element root, @Nullable BeanDefinitionParserDelegate parentDelegate) {
 
+		// han 创建 BeanDefinitionParserDelegate 对象
 		BeanDefinitionParserDelegate delegate = new BeanDefinitionParserDelegate(readerContext);
 		//BeanDefinitionParserDelegate初始化Document根元素
+		// han 初始化默认
 		delegate.initDefaults(root, parentDelegate);
 		return delegate;
 	}
@@ -176,10 +188,12 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * @param root the DOM root element of the document
 	 */
 	//使用Spring的Bean规则从Document的根元素开始进行Bean定义的Document对象
-	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
-		//Bean定义的Document对象使用了Spring默认的XML命名空间
+		protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
+			//Bean定义的Document对象使用了Spring默认的XML命名空间
+			// han <1> 如果根节点使用默认命名空间，执行默认解析
 		if (delegate.isDefaultNamespace(root)) {
 			//获取Bean定义的Document对象根元素的所有子节点
+			// han 遍历子节点
 			NodeList nl = root.getChildNodes();
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node node = nl.item(i);
@@ -187,19 +201,23 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					//Bean定义的Document的元素节点使用的是Spring默认的XML命名空间
+					// han <1> 如果该节点使用默认命名空间，执行默认解析
 					if (delegate.isDefaultNamespace(ele)) {
 						//使用Spring的Bean规则解析元素节点
 						parseDefaultElement(ele, delegate);
 					}
 					else {
 						//没有使用Spring默认的XML命名空间，则使用用户自定义的解析规则加息元素节点
+						// han 如果该节点非默认命名空间，执行自定义解析
 						delegate.parseCustomElement(ele);
 					}
 				}
 			}
 		}
 		else {
+
 			//Document的根元素没有使用Spring默认的命名空间，则使用用户自定义的解析规则解析Document根节点
+			// han <2> 如果根节点非默认命名空间，执行自定义解析
 			delegate.parseCustomElement(root);
 		}
 	}
