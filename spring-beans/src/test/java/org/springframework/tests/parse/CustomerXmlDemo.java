@@ -20,8 +20,15 @@ import static org.junit.Assert.assertTrue;
  */
 public class CustomerXmlDemo {
 
+	/**
+	 * @Description 解析自定义标签
+	 * @Author hanyf
+	 * @Date 11:50 2020/1/13
+	 * @Param 
+	 * @return void
+	 **/
 	@Test
-	public void demo() throws Exception {
+	public void parseXmlCustomTag() throws Exception {
 		DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(beanFactory);
 		reader.loadBeanDefinitions(new ClassPathResource("applicationCountext.xml"));

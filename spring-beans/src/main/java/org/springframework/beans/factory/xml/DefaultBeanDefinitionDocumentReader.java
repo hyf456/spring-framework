@@ -249,8 +249,10 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	//解析<import>导入元素，从给定的导入路径加载Bean定义资源到Spring IOC容器中
 	protected void importBeanDefinitionResource(Element ele) {
 		//获取给定的导入元素的location属性
+		// han <1> 获取 resource 的属性值
 		String location = ele.getAttribute(RESOURCE_ATTRIBUTE);
 		//如果导入元素的location属性值为空，则没有导入任何资源，直接返回
+		// han 为空，直接退出
 		if (!StringUtils.hasText(location)) {
 			getReaderContext().error("Resource location must not be empty", ele);
 			return;
@@ -258,12 +260,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 
 		// Resolve system properties: e.g. "${user.dir}"
 		//使用系统变量值解析location属性值
+		// han <2> 解析系统属性，格式如 ："${user.dir}"
 		location = getReaderContext().getEnvironment().resolveRequiredPlaceholders(location);
 
+		// han 实际 Resource 集合，即 import 的地址，有哪些 Resource 资源
 		Set<Resource> actualResources = new LinkedHashSet<>(4);
 
 		// Discover whether the location is an absolute or relative URI
 		//标识给定的导入元素的location是否是绝对路径
+		// han <3> 判断 location 是相对路径还是绝对路径
 		boolean absoluteLocation = false;
 		try {
 			absoluteLocation = ResourcePatternUtils.isUrl(location) || ResourceUtils.toURI(location).isAbsolute();
@@ -276,9 +281,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 
 		// Absolute or relative?
 		//给定的导入元素的location是绝对路径
+		// han <4> 绝对路径
 		if (absoluteLocation) {
 			try {
 				//使用资源读入器加载给定路径的Bean定义资源
+				// han 添加配置文件地址的 Resource 到 actualResources 中，并加载相应的 BeanDefinition 们
 				int importCount = getReaderContext().getReader().loadBeanDefinitions(location, actualResources);
 				if (logger.isTraceEnabled()) {
 					logger.trace("Imported " + importCount + " bean definitions from URL location [" + location + "]");
@@ -289,24 +296,32 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						"Failed to import bean definitions from URL location [" + location + "]", ele, ex);
 			}
 		}
+		// han <5> 相对路径
 		else {
 			// No URL -> considering resource location as relative to the current file.
 			//给定的导入元素的location是相对路径
 			try {
 				int importCount;
 				//将给定导入元素的location封装为相对路径资源
+				// han 创建相对地址的 Resource
 				Resource relativeResource = getReaderContext().getResource().createRelative(location);
 				//封装的相对路径资源存在
+				// han 存在
 				if (relativeResource.exists()) {
 					//使用资源读入器加载Bean定义资源
+					// han 加载 relativeResource 中的 BeanDefinition 们
 					importCount = getReaderContext().getReader().loadBeanDefinitions(relativeResource);
+					// han 添加到 actualResources 中
 					actualResources.add(relativeResource);
 				}
 				//封装的相对路径资源不存在
+				// han 不存在
 				else {
 					//获取Spring IOC容器资源读入器的基本路径
+					// han 获得根路径地址
 					String baseLocation = getReaderContext().getResource().getURL().toString();
 					//根据Spring IOC容器资源读入器的基本路径加载给定导入路径的资源
+					// han 添加配置文件地址的 Resource 到 actualResources 中，并加载相应的 BeanDefinition 们
 					importCount = getReaderContext().getReader().loadBeanDefinitions(
 							StringUtils.applyRelativePath(baseLocation, location), actualResources);
 				}
@@ -322,6 +337,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						"Failed to import bean definitions from relative location [" + location + "]", ele, ex);
 			}
 		}
+		// han <6> 解析成功后，进行监听器激活处理
 		Resource[] actResArray = actualResources.toArray(new Resource[0]);
 		//在解析完<Import>元素之后，发送容器导入其他资源处理完成事件
 		getReaderContext().fireImportProcessed(location, actResArray, extractSource(ele));
