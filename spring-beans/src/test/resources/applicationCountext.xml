@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:myname2="http://www.shenqi.com/schema/user"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+		http://www.shenqi.com/schema/user
+		http://www.shenqi.com/schema/user.xsd">
+
+
+	<!-- 自定义标签 -->
+	<myname2:user id="coustomerBean" userName="lee" email="bbb"/>
+
+</beans>	
+
