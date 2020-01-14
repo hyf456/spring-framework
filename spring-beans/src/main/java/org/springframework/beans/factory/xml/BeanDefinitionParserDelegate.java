@@ -1556,7 +1556,8 @@ public class BeanDefinitionParserDelegate {
 
 		BeanDefinitionHolder finalDefinition = definitionHolder;
 
-		// Decorate based on custom attributes first.
+		// Decorate based on custom attributes first.\
+		// han <1> 遍历属性，查看是否有适用于装饰的【属性】
 		NamedNodeMap attributes = ele.getAttributes();
 		for (int i = 0; i < attributes.getLength(); i++) {
 			Node node = attributes.item(i);
@@ -1564,6 +1565,7 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		// Decorate based on custom nested elements.
+		// han <2> 遍历子节点，查看是否有适用于修饰的【子节点】
 		NodeList children = ele.getChildNodes();
 		for (int i = 0; i < children.getLength(); i++) {
 			Node node = children.item(i);
@@ -1577,10 +1579,14 @@ public class BeanDefinitionParserDelegate {
 	public BeanDefinitionHolder decorateIfRequired(
 			Node node, BeanDefinitionHolder originalDef, @Nullable BeanDefinition containingBd) {
 
+		// han <1> 获取自定义标签的命名空间
 		String namespaceUri = getNamespaceURI(node);
+		// han <2> 过滤掉默认命名标签
 		if (namespaceUri != null && !isDefaultNamespace(namespaceUri)) {
+			// han <2> 获取相应的处理器
 			NamespaceHandler handler = this.readerContext.getNamespaceHandlerResolver().resolve(namespaceUri);
 			if (handler != null) {
+				// han <3> 进行装饰处理
 				BeanDefinitionHolder decorated =
 						handler.decorate(node, originalDef, new ParserContext(this.readerContext, this, containingBd));
 				if (decorated != null) {
