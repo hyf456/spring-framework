@@ -167,12 +167,14 @@ public abstract class BeanDefinitionReaderUtils {
 
 		// Register bean definition under primary name.
 		//获取解析的BeanDefinition的名称
+		// han 注册 beanName
 		String beanName = definitionHolder.getBeanName();
 		//向IOC容器注册BeanDefinition
 		registry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition());
 
 		// Register aliases for bean name, if any.
 		//如果解析的BeanDefinition有别名，向容器为其注册别名
+		// han 注册 alias
 		String[] aliases = definitionHolder.getAliases();
 		if (aliases != null) {
 			for (String alias : aliases) {
