@@ -247,6 +247,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * 功能描述：1.判断是不是单例。2.有相互诸如关系的类的实例化。
 	 * @author hanyf
 	 * @date 2019/1/14 11:27
+	 * @Paarm name：要获取 Bean 的名字
+	 * requiredType：要获取 bean 的类型
+	 * args：创建 Bean 时传递的参数。这个参数仅限于创建 Bean 使用
+	 * typeCheckOnly：是否为类型检查
 	 */
 	//真正实现向IOC容器获取Bean的功能，也是触发依赖注入功能的地方
 	protected <T> T doGetBean(final String name, @Nullable final Class<T> requiredType,
@@ -254,14 +258,15 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 		//根据指定的名称获取被管理Bean的名称，剥离指定名称中对容器的相关依赖
 		//如果指定的时别名，将别名转换为规范的Bean名称
-		// yudao <1> 返回 bean 名称，剥离工厂引用前缀。如果 name 是 alias，则获取对应映射的 beanName。
+		// han <1> 返回 bean 名称，剥离工厂引用前缀。
+		// han 如果 name 是 alias，则获取对应映射的 beanName。
 		final String beanName = transformedBeanName(name);
 		Object bean;
 
 		// Eagerly check singleton cache for manually registered singletons.
 		//先从缓存中取是否已经有被创建过的单态类型的Bean
 		//对于单利模式的Bean整个IOC容器中只创建一次，不需要重复创建
-		// yudao 从缓存中或者实例工厂中获取 Bean 对象。
+		// han 从缓存中或者实例工厂中获取 Bean 对象。
 		Object sharedInstance = getSingleton(beanName);
 		//IOC容器创建单利模式Bean实例对象
 		if (sharedInstance != null && args == null) {
@@ -279,7 +284,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			//获取给定Bean的实例对象，主要是完成FactoryBean的相关处理
 			//注意：BeanFactory时管理容器中Bean的工厂，而FactoryBean是
 			//创建对象的工厂Bean，两者之间有区别
-			// yudao <2> 完成 FactoryBean 的相关处理，并用来获取 FactoryBean 的处理结果
+			// han <2> 完成 FactoryBean 的相关处理，并用来获取 FactoryBean 的处理结果
 			bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
 
@@ -289,7 +294,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			//缓存没有正在创建的单例模式Bean
 			//缓存中已经有已经创建的原型模式Bean
 			//但是由于循环引用的问题导致实例化对象失败
-			// yudao <3> 因为 Spring 只解决单例模式下的循环依赖，在原型模式下如果存在循环依赖则会抛出异常。
+			// han <3> 因为 Spring 只解决单例模式下的循环依赖，在原型模式下如果存在循环依赖则会抛出异常。
 			if (isPrototypeCurrentlyInCreation(beanName)) {
 				throw new BeanCurrentlyInCreationException(beanName);
 			}
@@ -298,7 +303,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			//对IOC容器中是否存在指定名称的BeanDefinition进行检查，首先检查是否
 			// 能在当前的BeanFactory中获取的所需要的Bean，如果不能则委托当前容器
 			//的父级容器去查找，如果还是找不到则沿着容器的继承体系向父级容器查找
-			// yudao <4> 如果容器中没有找到，则从父类容器中加载
+			// han <4> 如果容器中没有找到，则从父类容器中加载
 			BeanFactory parentBeanFactory = getParentBeanFactory();
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
@@ -325,7 +330,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			}
 
 			//创建的Bean是否需要进行类型校验，一般不需要
-			// yudao <5> 如果不是仅仅做类型检查则是创建 bean，这里需要记录
+			// han <5> 如果不是仅仅做类型检查则是创建 bean，这里需要记录
 			if (!typeCheckOnly) {
 				//向容器标记指定的Bean已经被创建
 				markBeanAsCreated(beanName);
@@ -347,13 +352,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
 						//判断是否循环依赖
-						// yudao 若给定的依赖 bean 已经注册为依赖给定的 bean  循环依赖的情况
+						// han 若给定的依赖 bean 已经注册为依赖给定的 bean  循环依赖的情况
 						if (isDependent(beanName, dep)) {
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
 						}
 						//把被依赖Bean注册给当前依赖的Bean
-						// yudao 循环依赖调用
+						// han 循环依赖调用
 						registerDependentBean(dep, beanName);
 						try {
 							//递归调用getBean方法，获取当前Bean的依赖Bean
@@ -367,8 +372,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
-				//创建单利模式Baen的实例对象
-				// yudao <8> bean 实例化
+				//创建单例模式Baen的实例对象
+				// han <8> bean 实例化
 				if (mbd.isSingleton()) { //单例模式
 					//这里使用了一个匿名内部类，创建Bean实例对象，并且注册给所依赖的对象
 					sharedInstance = getSingleton(beanName, () -> {
@@ -381,7 +386,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							// eagerly by the creation process, to allow for circular reference resolution.
 							// Also remove any beans that received a temporary reference to the bean.
 							//显式地从容器单利模式Bean缓存中清除实例对象
-							// yudao 显式从单例缓存中删除 Bean 实例。因为单例模式下为了解决循环依赖，可能他已经存在了，所以销毁它
+							// han 显式从单例缓存中删除 Bean 实例。因为单例模式下为了解决循环依赖，可能他已经存在了，所以销毁它
 							destroySingleton(beanName);
 							throw ex;
 						}
