@@ -167,6 +167,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	private final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
 
 	/** Names of beans that have already been created at least once. */
+	// han 已创建 Bean 的名字集合
 	private final Set<String> alreadyCreated = Collections.newSetFromMap(new ConcurrentHashMap<>(256));
 
 	/** Names of beans that are currently in creation. */
@@ -305,11 +306,14 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			//的父级容器去查找，如果还是找不到则沿着容器的继承体系向父级容器查找
 			// han <4> 如果容器中没有找到，则从父类容器中加载
 			BeanFactory parentBeanFactory = getParentBeanFactory();
+			// han parentBGeanFactory 不为空且 beanDefinitionMap 中不存在该 name 的 BeanDefinition
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
 				//解析指定Bean名称的原始名称
+				// han 确定原始 beanName
 				String nameToLookup = originalBeanName(name);
 				// 如果父类容器为 AbstractBeanFactory，直接递归查找
+				// han 若为 AbstractBeanFactory 类型，委托父类处理
 				if (parentBeanFactory instanceof AbstractBeanFactory) {
 					return ((AbstractBeanFactory) parentBeanFactory).doGetBean(
 							nameToLookup, requiredType, args, typeCheckOnly);
@@ -317,11 +321,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				else if (args != null) {
 					// Delegation to parent with explicit args.
 					//委派父级容器根据指定名称和显式的参数查找
+					// han 委托给给构造函数 getBean() 处理
 					return (T) parentBeanFactory.getBean(nameToLookup, args);
 				} // 用明确的 requiredType 从 parentBeanFactory 中，获取 Bean 对象
 				else if (requiredType != null) {
 					// No args -> delegate to standard getBean method.
 					//委派父级容器根据指定名称和类型查找
+					// han 没有 args 委托给标准的 getBean() 处理
 					return parentBeanFactory.getBean(nameToLookup, requiredType);
 				} // 直接使用 nameToLookup 从 parentBeanFactory 获取 Bean 对象
 				else {
@@ -1295,10 +1301,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException {
 		// Quick check on the concurrent map first, with minimal locking.
+		// han 快速从缓存中获取，如果不为空，则直接返回
 		RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName);
 		if (mbd != null) {
 			return mbd;
 		}
+		// han 获取 RootBeanDefinition
+		// han 如果返回的 BeanDefinition 是子类 bean 的话，则合并父类相关属性
 		return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
 	}
 
@@ -1653,12 +1662,17 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @param beanName the name of the bean
 	 */
 	protected void markBeanAsCreated(String beanName) {
+		// 没有创建
 		if (!this.alreadyCreated.contains(beanName)) {
+			// han 加上全局锁
 			synchronized (this.mergedBeanDefinitions) {
+				// han 再次检查一次：DCL 双检查模式
 				if (!this.alreadyCreated.contains(beanName)) {
 					// Let the bean definition get re-merged now that we're actually creating
 					// the bean... just in case some of its metadata changed in the meantime.
+					// han 从mergedBeanDefinition 中删除 beanName 并在下次访问时重新创建它
 					clearMergedBeanDefinition(beanName);
+					// han 添加到已创建 bean 集合中
 					this.alreadyCreated.add(beanName);
 				}
 			}
