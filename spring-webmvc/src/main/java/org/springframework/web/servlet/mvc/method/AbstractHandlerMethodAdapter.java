@@ -33,11 +33,15 @@ import org.springframework.web.servlet.support.WebContentGenerator;
  * @author Arjen Poutsma
  * @since 3.1
  */
+// @since 3.1 @RequestMapping注解是Spring2.5出现的
+// 注意：它实现了Ordered接口
 public abstract class AbstractHandlerMethodAdapter extends WebContentGenerator implements HandlerAdapter, Ordered {
 
 	private int order = Ordered.LOWEST_PRECEDENCE;
 
 
+	// 唯一构造函数。传的 false 表示：忽略掉 supportedMethods 这个属性
+	// 默认它的值是 GET、POST、HEAD（见 WebContentGenerator）
 	public AbstractHandlerMethodAdapter() {
 		// no restriction of HTTP methods by default
 		super(false);
@@ -64,6 +68,8 @@ public abstract class AbstractHandlerMethodAdapter extends WebContentGenerator i
 	 * @param handler the handler instance to check
 	 * @return whether or not this adapter can adapt the given handler
 	 */
+	// 只处理 HandlerMethod 类型的处理器。抽象方法 supportsInternal 默认返回 true
+	// 是流出的钩子可以给你自己扩展的
 	@Override
 	public final boolean supports(Object handler) {
 		return (handler instanceof HandlerMethod && supportsInternal((HandlerMethod) handler));
@@ -79,6 +85,7 @@ public abstract class AbstractHandlerMethodAdapter extends WebContentGenerator i
 	/**
 	 * This implementation expects the handler to be an {@link HandlerMethod}.
 	 */
+	// 抽象方法交给子类 handleInternal 去实现
 	@Override
 	@Nullable
 	public final ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler)

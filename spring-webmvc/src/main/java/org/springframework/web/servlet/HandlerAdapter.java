@@ -60,6 +60,9 @@ public interface HandlerAdapter {
 	 * @param handler handler object to check
 	 * @return whether or not this object can use the given handler
 	 */
+	// 判断当前的这个 HandlerAdapter 是否 支持给与的 handler
+	// 因为一般来说：每个适配器只能作用于一种处理器（你总不能把手机适配器拿去用于电脑吧）
+	// https://fangshixiang.blog.csdn.net/article/details/89844141
 	boolean supports(Object handler);
 
 	/**
@@ -74,6 +77,8 @@ public interface HandlerAdapter {
 	 * @return a ModelAndView object with the name of the view and the required
 	 * model data, or {@code null} if the request has been handled directly
 	 */
+	// 核心方法：利用 Handler 处理请求，然后返回一个 ModelAndView
+	// DispatcherServlet 最终就是调用此方法，来返回一个 ModelAndView 的
 	@Nullable
 	ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception;
 
@@ -86,6 +91,7 @@ public interface HandlerAdapter {
 	 * @see javax.servlet.http.HttpServlet#getLastModified
 	 * @see org.springframework.web.servlet.mvc.LastModified#getLastModified
 	 */
+	// 同 HttpServlet 的 getLastModified 方法
 	long getLastModified(HttpServletRequest request, Object handler);
 
 }

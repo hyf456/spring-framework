@@ -291,6 +291,7 @@ abstract class AutowireUtils {
 			else if (methodName.equals("toString")) {
 				return this.objectFactory.toString();
 			}
+			// 执行目标方法。注意：目标实例对象是objectFactory.getObject()
 			try {
 				return method.invoke(this.objectFactory.getObject(), args);
 			}

@@ -37,6 +37,7 @@ import org.springframework.web.servlet.ModelAndView;
  * @see LastModified
  * @see HttpRequestHandlerAdapter
  */
+// 适配`org.springframework.web.servlet.mvc.Controller`这种Handler
 public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 
 	@Override
@@ -44,6 +45,7 @@ public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 		return (handler instanceof Controller);
 	}
 
+	// 最终执行逻辑的还是 Handler
 	@Override
 	@Nullable
 	public ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -52,6 +54,8 @@ public class SimpleControllerHandlerAdapter implements HandlerAdapter {
 		return ((Controller) handler).handleRequest(request, response);
 	}
 
+	// 此处注意：若处理器实现了`LastModified`接口，那就委托给它了
+	// 否则返回 -1 表示不要缓存
 	@Override
 	public long getLastModified(HttpServletRequest request, Object handler) {
 		if (handler instanceof LastModified) {

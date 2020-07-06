@@ -42,6 +42,7 @@ import org.springframework.util.ClassUtils;
  * @see org.springframework.web.filter.RequestContextFilter
  * @see org.springframework.web.servlet.DispatcherServlet
  */
+// 它是个工具类：用抽象类表示而已 所有方法均静态
 public abstract class RequestContextHolder  {
 
 	private static final boolean jsfPresent =

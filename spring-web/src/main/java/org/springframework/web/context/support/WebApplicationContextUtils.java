@@ -182,6 +182,8 @@ public abstract class WebApplicationContextUtils {
 	public static void registerWebApplicationScopes(ConfigurableListableBeanFactory beanFactory,
 			@Nullable ServletContext sc) {
 
+		// web 容器下新增支持了三种 scope
+		// 非 web 容器（默认）只有单例和多例两种
 		beanFactory.registerScope(WebApplicationContext.SCOPE_REQUEST, new RequestScope());
 		beanFactory.registerScope(WebApplicationContext.SCOPE_SESSION, new SessionScope());
 		if (sc != null) {
@@ -191,6 +193,8 @@ public abstract class WebApplicationContextUtils {
 			sc.setAttribute(ServletContextScope.class.getName(), appScope);
 		}
 
+		// =========== 依赖注入 ===========
+		// 这里决定了，若你依赖注入 ServletRequest 的话，就是用 RequestObjectFactory 来处理
 		beanFactory.registerResolvableDependency(ServletRequest.class, new RequestObjectFactory());
 		beanFactory.registerResolvableDependency(ServletResponse.class, new ResponseObjectFactory());
 		beanFactory.registerResolvableDependency(HttpSession.class, new SessionObjectFactory());
@@ -308,6 +312,7 @@ public abstract class WebApplicationContextUtils {
 	 * Return the current RequestAttributes instance as ServletRequestAttributes.
 	 * @see RequestContextHolder#currentRequestAttributes()
 	 */
+	// 从当前请求上下文：RequestContextHolder 里找到请求属性，进而就可以拿到请求对象，响应对象等等了
 	private static ServletRequestAttributes currentRequestAttributes() {
 		RequestAttributes requestAttr = RequestContextHolder.currentRequestAttributes();
 		if (!(requestAttr instanceof ServletRequestAttributes)) {
@@ -322,7 +327,7 @@ public abstract class WebApplicationContextUtils {
 	 */
 	@SuppressWarnings("serial")
 	private static class RequestObjectFactory implements ObjectFactory<ServletRequest>, Serializable {
-
+		// 从当前请求上下文里找到 Request 对象
 		@Override
 		public ServletRequest getObject() {
 			return currentRequestAttributes().getRequest();

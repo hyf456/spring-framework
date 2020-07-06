@@ -1011,13 +1011,16 @@ public class DispatcherServlet extends FrameworkServlet {
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
+				// 1、根据 URL（当然不一定非得是 URL）匹配到一个处理器
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
+					// 若匹配不到 Handler 处理器，就 404 了
 					noHandlerFound(processedRequest, response);
 					return;
 				}
 
 				// Determine handler adapter for the current request.
+				// 2、从 Chain 里拿出 Handler（注意是 Object 类型哦~）然后找到属于它的适配器
 				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
 				// Process last-modified header, if supported by the handler.
@@ -1030,18 +1033,22 @@ public class DispatcherServlet extends FrameworkServlet {
 					}
 				}
 
+				// 3、执行作用在此 Handler 上的所有拦截器的 Pre 方法
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
 					return;
 				}
 
 				// Actually invoke the handler.
+				// 4、真正执行 handle 方法（也就是你自己书写的逻辑方法），得到一个 ModelAndView
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
 				if (asyncManager.isConcurrentHandlingStarted()) {
 					return;
 				}
 
+				// 5、视图渲染
 				applyDefaultViewName(processedRequest, mv);
+				// 6、执行拦截器的 post 方法（可见它是视图渲染完成了才会执行的哦~）
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
 			catch (Exception ex) {
@@ -1062,6 +1069,7 @@ public class DispatcherServlet extends FrameworkServlet {
 					new NestedServletException("Handler processing failed", err));
 		}
 		finally {
+			// 7、执行拦截器的afterCompletion方法（不管抛出与否）
 			if (asyncManager.isConcurrentHandlingStarted()) {
 				// Instead of postHandle and afterCompletion
 				if (mappedHandler != null) {
