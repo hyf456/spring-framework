@@ -123,6 +123,9 @@ public interface BeanFactory {
 	 */
 	//对FactoryBean的转义定义，因为如果使用bean的名字检索FactoryBean
 	// 如果需要得到工厂本身，需要转义
+
+	// 该常量用来区分是获取FactoryBean还是FactoryBean的createBean创建的实例.如果&开始则获取FactoryBean;否则获取createBean创建的实例.
+	// 备注，此常量课时定义在BeanFactory里面的哟，因为它属于Bean工厂的处理机制~~~
 	String FACTORY_BEAN_PREFIX = "&";
 
 
@@ -138,6 +141,7 @@ public interface BeanFactory {
 	 * @throws NoSuchBeanDefinitionException if there is no bean with the specified name
 	 * @throws BeansException if the bean could not be obtained
 	 */
+	//==========获取bean,这边可以实现单例,原型
 	Object getBean(String name) throws BeansException;
 
 	/**
@@ -250,6 +254,7 @@ public interface BeanFactory {
 	 * @param name the name of the bean to query
 	 * @return whether a bean with the given name is present
 	 */
+	//判断是否包含Bean。此处有个陷阱：这边不管类是否抽象类,懒加载,是否在容器范围内,只要符合都返回true,所以这边true,**不一定能从getBean获取实例**
 	boolean containsBean(String name);
 
 	/**
@@ -267,6 +272,7 @@ public interface BeanFactory {
 	 * @see #getBean
 	 * @see #isPrototype
 	 */
+	// =============是否是单例 类型匹配的一些判断
 	boolean isSingleton(String name) throws NoSuchBeanDefinitionException;
 
 	/**
@@ -335,6 +341,7 @@ public interface BeanFactory {
 	 * @see #getBean
 	 * @see #isTypeMatch
 	 */
+	// 获取Bean的类型、别名等等
 	@Nullable
 	Class<?> getType(String name) throws NoSuchBeanDefinitionException;
 
