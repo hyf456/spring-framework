@@ -45,12 +45,15 @@ import org.springframework.util.ClassUtils;
 // 它是个工具类：用抽象类表示而已 所有方法均静态
 public abstract class RequestContextHolder  {
 
+	// jsf是JSR-127标准的一种用户界面框架  过时的技术，所以此处不再做讨论
 	private static final boolean jsfPresent =
 			ClassUtils.isPresent("javax.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
 
+	// 现成和request绑定的容器
 	private static final ThreadLocal<RequestAttributes> requestAttributesHolder =
 			new NamedThreadLocal<>("Request attributes");
 
+	// 和上面比较，它是被子线程继承的request   Inheritable:可继承的
 	private static final ThreadLocal<RequestAttributes> inheritableRequestAttributesHolder =
 			new NamedInheritableThreadLocal<>("Request context");
 
@@ -80,6 +83,7 @@ public abstract class RequestContextHolder  {
 	 * @param inheritable whether to expose the RequestAttributes as inheritable
 	 * for child threads (using an {@link InheritableThreadLocal})
 	 */
+	// 把传入的RequestAttributes和当前线程绑定。 注意这里传入false：表示不能被继承
 	public static void setRequestAttributes(@Nullable RequestAttributes attributes, boolean inheritable) {
 		if (attributes == null) {
 			resetRequestAttributes();
@@ -101,6 +105,7 @@ public abstract class RequestContextHolder  {
 	 * @return the RequestAttributes currently bound to the thread,
 	 * or {@code null} if none bound
 	 */
+	//兼容继承和非继承  只要得到了就成
 	@Nullable
 	public static RequestAttributes getRequestAttributes() {
 		RequestAttributes attributes = requestAttributesHolder.get();
@@ -122,6 +127,7 @@ public abstract class RequestContextHolder  {
 	 * @see FacesRequestAttributes
 	 * @see javax.faces.context.FacesContext#getCurrentInstance()
 	 */
+	//在没有jsf的时候，效果完全同getRequestAttributes()  因为jsf几乎废弃了，所以效果可以说一致
 	public static RequestAttributes currentRequestAttributes() throws IllegalStateException {
 		RequestAttributes attributes = getRequestAttributes();
 		if (attributes == null) {

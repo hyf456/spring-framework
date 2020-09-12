@@ -42,6 +42,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.context.support.MessageSourceAccessor
  * @see org.springframework.web.servlet.DispatcherServlet
  */
+// 做本地化、国际化的上下文容器。
 public final class LocaleContextHolder {
 
 	private static final ThreadLocal<LocaleContext> localeContextHolder =
@@ -51,10 +52,12 @@ public final class LocaleContextHolder {
 			new NamedInheritableThreadLocal<>("LocaleContext");
 
 	// Shared default locale at the framework level
+	// 没有手动调用setDefaultLocale,取值为  Locale#getDefault()
 	@Nullable
 	private static Locale defaultLocale;
 
 	// Shared default time zone at the framework level
+	// 同上 默认取值为TimeZone.getDefault()
 	@Nullable
 	private static TimeZone defaultTimeZone;
 
@@ -219,6 +222,7 @@ public final class LocaleContextHolder {
 	 * @see #setDefaultLocale(Locale)
 	 * @see java.util.Locale#getDefault()
 	 */
+	// 我们可以直接从请求域拿到Local上下文，但是也是可以自己传进来的。。。
 	public static Locale getLocale(@Nullable LocaleContext localeContext) {
 		if (localeContext != null) {
 			Locale locale = localeContext.getLocale();
