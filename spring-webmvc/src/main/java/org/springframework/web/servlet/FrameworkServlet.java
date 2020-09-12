@@ -988,21 +988,30 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			throws ServletException, IOException {
 
 		long startTime = System.currentTimeMillis();
+		// 记录抛出的异常~~~(若有的话)
 		Throwable failureCause = null;
 
+		//拿到之前的LocaleContext上下文（因为可能在Filter里已经设置过了）
 		LocaleContext previousLocaleContext = LocaleContextHolder.getLocaleContext();
+		// 以当前的request创建一个Local的上下文，后面会继续处理
 		LocaleContext localeContext = buildLocaleContext(request);
 
 		RequestAttributes previousAttributes = RequestContextHolder.getRequestAttributes();
+		// 这里面build逻辑注意：previousAttributes若为null，或者就是ServletRequestAttributes类型，那就new ServletRequestAttributes(request, response);
+		// 若不为null，就保持之前的绑定结果，不再做重复绑定了（尊重原创）
 		ServletRequestAttributes requestAttributes = buildRequestAttributes(request, response, previousAttributes);
 
+		// 拿到异步管理器。这里是首次获取，会new WebAsyncManager(),然后放到request的attr里面
 		WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+		//这里需要注意：给异步上下文恒定注册了 RequestBindingInterceptor 这个拦截器（作用：绑定当前的request、response、local等）
 		asyncManager.registerCallableInterceptor(FrameworkServlet.class.getName(), new RequestBindingInterceptor());
 
+		//这句话很明显，就是吧request和Local上下文、RequestContext绑定
 		initContextHolders(request, localeContext, requestAttributes);
 
 		try {
 			// 抽象方法：交给DispatcherServlet去实现
+			//模版设计模式：由子类 DispatcherServlet 去实现实际逻辑
 			doService(request, response);
 		}
 		catch (ServletException | IOException ex) {
@@ -1015,11 +1024,14 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		}
 
 		finally {
+			//这个时候已经全部处理完成，视图已经渲染了
+			//doService()方法完成后，重置上下文，也就是解绑
 			resetContextHolders(request, previousLocaleContext, previousAttributes);
 			if (requestAttributes != null) {
 				requestAttributes.requestCompleted();
 			}
 			logResult(request, response, failureCause, asyncManager);
+			//关键：不管执行成功与否，都会发布一个事件，说我处理了这个请求（有需要监听的，就可以监听这个事件了，每次请求都会有）
 			publishRequestHandledEvent(request, response, startTime, failureCause);
 		}
 	}
@@ -1135,10 +1147,13 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	private void publishRequestHandledEvent(HttpServletRequest request, HttpServletResponse response,
 			long startTime, @Nullable Throwable failureCause) {
 
+		// 当 publishEvents 设置为 true 和 webApplicationContext 不为空就会处理这个事件的发布
 		if (this.publishEvents && this.webApplicationContext != null) {
 			// Whether or not we succeeded, publish an event.
+			// 计算出处理该请求花费的时间
 			long processingTime = System.currentTimeMillis() - startTime;
 			this.webApplicationContext.publishEvent(
+					// ServletRequestHandledEvent 这个事件：目前来说只有这里会发布
 					new ServletRequestHandledEvent(this,
 							request.getRequestURI(), request.getRemoteAddr(),
 							request.getMethod(), getServletConfig().getServletName(),

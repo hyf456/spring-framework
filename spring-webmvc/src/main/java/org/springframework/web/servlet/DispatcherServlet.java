@@ -911,6 +911,8 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		// Keep a snapshot of the request attributes in case of an include,
 		// to be able to restore the original attributes after the include.
+		// 如果该请求是include的请求（请求包含） 那么就把request域中的数据保存一份快照版本
+		// 等doDispatch结束之后，会把这个快照版本的数据覆盖到新的request里面去
 		Map<String, Object> attributesSnapshot = null;
 		if (WebUtils.isIncludeRequest(request)) {
 			attributesSnapshot = new HashMap<>();
@@ -924,11 +926,13 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 
 		// Make framework objects available to handlers and view objects.
+		// 说得很清楚，把一些常用对象放进请求域  方便Handler里面可以随意获取
 		request.setAttribute(WEB_APPLICATION_CONTEXT_ATTRIBUTE, getWebApplicationContext());
 		request.setAttribute(LOCALE_RESOLVER_ATTRIBUTE, this.localeResolver);
 		request.setAttribute(THEME_RESOLVER_ATTRIBUTE, this.themeResolver);
 		request.setAttribute(THEME_SOURCE_ATTRIBUTE, getThemeSource());
 
+		// 如果是重定向，放置得更多一些~~~~
 		if (this.flashMapManager != null) {
 			FlashMap inputFlashMap = this.flashMapManager.retrieveAndUpdate(request, response);
 			if (inputFlashMap != null) {
@@ -939,11 +943,13 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 
 		try {
+			// DispatcherServlet 最重要的方法，交给他去分发请求你、找到handler处理等等
 			doDispatch(request, response);
 		}
 		finally {
 			if (!WebAsyncUtils.getAsyncManager(request).isConcurrentHandlingStarted()) {
 				// Restore the original attribute snapshot, in case of an include.
+				//如果是include请求  会上上面的数据快照，重新放置到request里面去
 				if (attributesSnapshot != null) {
 					restoreAttributesAfterInclude(request, attributesSnapshot);
 				}
@@ -995,8 +1001,10 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @param response current HTTP response
 	 * @throws Exception in case of any kind of processing failure
 	 */
-	protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	protected void  doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		// 此处用processedRequest  需要注意的是：若是处理上传，processedRequest 将和request不再指向同一对象
 		HttpServletRequest processedRequest = request;
+		// 异常链处理器
 		HandlerExecutionChain mappedHandler = null;
 		boolean multipartRequestParsed = false;
 
@@ -1007,11 +1015,15 @@ public class DispatcherServlet extends FrameworkServlet {
 			Exception dispatchException = null;
 
 			try {
+				//checkMultipart 这个方法很重要，判断是否是上传需求。且看下面的具体分析：：：
+				//如果请求是POST请求，并且请求头中的Context-Type是以multipart/开头的就认为是文件上传的请求
 				processedRequest = checkMultipart(request);
+				// 标记一下：是否是文件上传的request了
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
 				// 1、根据 URL（当然不一定非得是 URL）匹配到一个处理器
+				// 找到一个处理器，如果没有找到对应的处理类的话，这里通常会返回404，如果throwExceptionIfNoHandlerFound属性值为true的情况下会抛出异常
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
 					// 若匹配不到 Handler 处理器，就 404 了
@@ -1021,6 +1033,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 				// Determine handler adapter for the current request.
 				// 2、从 Chain 里拿出 Handler（注意是 Object 类型哦~）然后找到属于它的适配器
+				// 根据实际的handler去找到一个合适的HandlerAdapter，方法详细逻辑同getHandler，因此不再解释
 				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
 				// Process last-modified header, if supported by the handler.
@@ -1034,24 +1047,31 @@ public class DispatcherServlet extends FrameworkServlet {
 				}
 
 				// 3、执行作用在此 Handler 上的所有拦截器的 Pre 方法
+				// 这段代码很有意思：执行处理器连里的拦截器们，具体参阅下面详细：
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
 					return;
 				}
 
 				// Actually invoke the handler.
 				// 4、真正执行 handle 方法（也就是你自己书写的逻辑方法），得到一个 ModelAndView
+				// 真正执行我们自己书写的controller方法的逻辑。返回一个ModelAndView
+				// 这也是一个很复杂的过程（序列化、数据绑定等等），需要后面专题讲解
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
+				// 如果异步启动了，这里就先直接返回了，也就不会再执行拦截器PostHandle之类的
 				if (asyncManager.isConcurrentHandlingStarted()) {
 					return;
 				}
 
 				// 5、视图渲染
+				//意思是：如果我们没有设置viewName，就采用默认的。否则采用我们自己的
 				applyDefaultViewName(processedRequest, mv);
 				// 6、执行拦截器的 post 方法（可见它是视图渲染完成了才会执行的哦~）
+				// 执行所有的拦截器的postHandle方法，并且把mv给他
+				// 这里有一个小细节：这个时候拦截器是【倒序】执行的
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
-			catch (Exception ex) {
+			catch (Exception ex) { // 这两个catcher什么都不做，只是把异常记录下来
 				dispatchException = ex;
 			}
 			catch (Throwable err) {
@@ -1059,6 +1079,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				// making them available for @ExceptionHandler methods and other scenarios.
 				dispatchException = new NestedServletException("Handler dispatch failed", err);
 			}
+			//这个方法很重要，顾名思义，他是来处理结果的，渲染视图、处理异常等等的  下面详细分解
 			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 		}
 		catch (Exception ex) {
@@ -1107,21 +1128,28 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		boolean errorView = false;
 
+		//如果有异常，就进入异常处理逻辑，返回到异常页面
 		if (exception != null) {
+			// 含有异常页面视图的异常
 			if (exception instanceof ModelAndViewDefiningException) {
 				logger.debug("ModelAndViewDefiningException encountered", exception);
 				mv = ((ModelAndViewDefiningException) exception).getModelAndView();
 			}
 			else {
 				Object handler = (mappedHandler != null ? mappedHandler.getHandler() : null);
+				//1、会执行所有的我们的自己配置（或者默认配置）了的HandlerExceptionResolver处理器
+				//2、上面需要注意了，但凡处理方法返回的不是null，有mv的返回。那后面的处理器就不会再进行处理了。具有短路的效果，一定要注意  是通过null来判断的
+				//3、处理完成后，得到error的视图mv，最后会设置一个viewName，然后返回出去
 				mv = processHandlerException(request, response, handler, exception);
 				errorView = (mv != null);
 			}
 		}
 
 		// Did the handler return a view to render?
+		// 若视图不为空，不为null，就开始执行render()方法，开始渲染视图了
 		if (mv != null && !mv.wasCleared()) {
 			render(mv, request, response);
+			// 如果有错误视图，这里清除掉所有的请求域里的所有的错误属性
 			if (errorView) {
 				WebUtils.clearErrorRequestAttributes(request);
 			}
@@ -1132,11 +1160,13 @@ public class DispatcherServlet extends FrameworkServlet {
 			}
 		}
 
+		//处理异步=========我们发现，它不执行后面的AfterCompletion方法了，注意一下即可
 		if (WebAsyncUtils.getAsyncManager(request).isConcurrentHandlingStarted()) {
 			// Concurrent handling started during a forward
 			return;
 		}
 
+		// 执行拦截器的AfterCompletion 方法
 		if (mappedHandler != null) {
 			mappedHandler.triggerAfterCompletion(request, response, null);
 		}
@@ -1168,18 +1198,21 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @see MultipartResolver#resolveMultipart
 	 */
 	protected HttpServletRequest checkMultipart(HttpServletRequest request) throws MultipartException {
+		// 配置了multipartResolver，并且是文件上传的请求  才会继续往下走
 		if (this.multipartResolver != null && this.multipartResolver.isMultipart(request)) {
+			// 如果该请求已经是MultipartHttpServletRequest 那就输出一个日志走人
 			if (WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class) != null) {
 				if (request.getDispatcherType().equals(DispatcherType.REQUEST)) {
 					logger.trace("Request already resolved to MultipartHttpServletRequest, e.g. by MultipartFilter");
 				}
 			}
-			else if (hasMultipartException(request) ) {
+			else if (hasMultipartException(request) ) { // 判断是否有MultipartException 一般没有
 				logger.debug("Multipart resolution previously failed for current request - " +
 						"skipping re-resolution for undisturbed error rendering");
 			}
 			else {
 				try {
+					// 这里特别注意，不管是哪种multipartResolver的实现，内部都是new了一个新的MultipartHttpServletRequest的实现类，所以不再指向原来的request了，所以一定要注意
 					return this.multipartResolver.resolveMultipart(request);
 				}
 				catch (MultipartException ex) {
@@ -1194,6 +1227,7 @@ public class DispatcherServlet extends FrameworkServlet {
 			}
 		}
 		// If not returned before: return original request.
+		// 如果前面没有返回，就原样返回，相当于啥都不做
 		return request;
 	}
 
@@ -1235,6 +1269,7 @@ public class DispatcherServlet extends FrameworkServlet {
 	@Nullable
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		if (this.handlerMappings != null) {
+			// 会把配置的所有的HandlerMapping 都拿出来查找，只要找到一个就返回
 			for (HandlerMapping mapping : this.handlerMappings) {
 				HandlerExecutionChain handler = mapping.getHandler(request);
 				if (handler != null) {
@@ -1344,21 +1379,27 @@ public class DispatcherServlet extends FrameworkServlet {
 	 */
 	protected void render(ModelAndView mv, HttpServletRequest request, HttpServletResponse response) throws Exception {
 		// Determine locale for request and apply it to the response.
+		// 通过localeResolver吧local解析出来，放到response里面去
 		Locale locale =
 				(this.localeResolver != null ? this.localeResolver.resolveLocale(request) : request.getLocale());
 		response.setLocale(locale);
 
+		//==================视图：关键中的关键==================
 		View view;
 		String viewName = mv.getViewName();
+		// 如果已经有viewName了（绝大多数情况）
 		if (viewName != null) {
 			// We need to resolve the view name.
+			// 视图解析器  根据String类型的名字，解析出来一个视图（视图解析器有多个）
+			// 还是那个原理：只要有一个返回了不为null的，后面的就不会再解析了
 			view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
+			// 如果解析不出来视图，那就抛出异常，说不能解析该视图
 			if (view == null) {
 				throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
 						"' in servlet with name '" + getServletName() + "'");
 			}
 		}
-		else {
+		else {  //没有视图名称，但是必须有视图内容，否则抛出异常
 			// No need to lookup: the ModelAndView object contains the actual View object.
 			view = mv.getView();
 			if (view == null) {
@@ -1372,9 +1413,11 @@ public class DispatcherServlet extends FrameworkServlet {
 			logger.trace("Rendering view [" + view + "] ");
 		}
 		try {
+			//设置响应码 status
 			if (mv.getStatus() != null) {
 				response.setStatus(mv.getStatus().value());
 			}
+			// 根据model里的数据，正式渲染（关于此部分逻辑，后续再说，也比较复杂）
 			view.render(mv.getModelInternal(), request, response);
 		}
 		catch (Exception ex) {
