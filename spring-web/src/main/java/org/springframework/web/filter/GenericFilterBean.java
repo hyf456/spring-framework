@@ -292,6 +292,8 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	 * @see javax.servlet.FilterConfig#getFilterName()
 	 * @see #setBeanName
 	 */
+	// 如果在Spring应用程序上下文中初始化为bean，那么它将返回到bean工厂中定义的bean名称。
+	// 需要注意的是，如果是以bean的形式加入了。（比如Boot环境下），此时FilterConfig还为null的，所以有这个判断
 	@Nullable
 	protected String getFilterName() {
 		return (this.filterConfig != null ? this.filterConfig.getFilterName() : this.beanName);

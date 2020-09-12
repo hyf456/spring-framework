@@ -78,6 +78,7 @@ public abstract class WebApplicationContextUtils {
 	 * @throws IllegalStateException if the root WebApplicationContext could not be found
 	 * @see org.springframework.web.context.WebApplicationContext#ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE
 	 */
+	//Required这个方法和上面唯一的区别是：它如果返回null 就直接抛出异常了，上面是返回null
 	public static WebApplicationContext getRequiredWebApplicationContext(ServletContext sc) throws IllegalStateException {
 		WebApplicationContext wac = getWebApplicationContext(sc);
 		if (wac == null) {
@@ -95,6 +96,7 @@ public abstract class WebApplicationContextUtils {
 	 * @return the root WebApplicationContext for this web app, or {@code null} if none
 	 * @see org.springframework.web.context.WebApplicationContext#ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE
 	 */
+	// 我在讲解源码的时候：创建容器失败的时候，也会吧异常放进来（我们调用者一般较少使用）
 	@Nullable
 	public static WebApplicationContext getWebApplicationContext(ServletContext sc) {
 		return getWebApplicationContext(sc, WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
@@ -106,6 +108,8 @@ public abstract class WebApplicationContextUtils {
 	 * @param attrName the name of the ServletContext attribute to look for
 	 * @return the desired WebApplicationContext for this web app, or {@code null} if none
 	 */
+	// 这个可以说是上面的加强版。当getWebApplicationContext(sc)没找到时，还会试从ServletContext的属性中查找唯一的一个WebApplicationContext
+	// 如果找到的WebApplicationContext不唯一，则抛出异常声明该情况
 	@Nullable
 	public static WebApplicationContext getWebApplicationContext(ServletContext sc, String attrName) {
 		Assert.notNull(sc, "ServletContext must not be null");
@@ -169,6 +173,7 @@ public abstract class WebApplicationContextUtils {
 	 * with the given BeanFactory, as used by the WebApplicationContext.
 	 * @param beanFactory the BeanFactory to configure
 	 */
+	//向WebApplicationContext使用的BeanFactory注册web有关作用域对象 :
 	public static void registerWebApplicationScopes(ConfigurableListableBeanFactory beanFactory) {
 		registerWebApplicationScopes(beanFactory, null);
 	}
@@ -190,14 +195,17 @@ public abstract class WebApplicationContextUtils {
 			ServletContextScope appScope = new ServletContextScope(sc);
 			beanFactory.registerScope(WebApplicationContext.SCOPE_APPLICATION, appScope);
 			// Register as ServletContext attribute, for ContextCleanupListener to detect it.
+			// 此处，还吧ServletContext上下文的Scope，注册到上下文里，方便ContextCleanupListener 进行获取
 			sc.setAttribute(ServletContextScope.class.getName(), appScope);
 		}
 
 		// =========== 依赖注入 ===========
 		// 这里决定了，若你依赖注入 ServletRequest 的话，就是用 RequestObjectFactory 来处理
+		// 定义注入规则。当开发人员依赖注入ServletRequest对象时，注入的bean其实是这里的RequestObjectFactory工厂bean
 		beanFactory.registerResolvableDependency(ServletRequest.class, new RequestObjectFactory());
 		beanFactory.registerResolvableDependency(ServletResponse.class, new ResponseObjectFactory());
 		beanFactory.registerResolvableDependency(HttpSession.class, new SessionObjectFactory());
+		// ServletWebRequest 里面既有request，也有response
 		beanFactory.registerResolvableDependency(WebRequest.class, new WebRequestObjectFactory());
 		if (jsfPresent) {
 			FacesDependencyRegistrar.registerFacesDependencies(beanFactory);
@@ -221,9 +229,10 @@ public abstract class WebApplicationContextUtils {
 	 * @param servletContext the ServletContext that we're running within
 	 * @param servletConfig the ServletConfig
 	 */
-	public static void registerEnvironmentBeans(ConfigurableListableBeanFactory bf,
+	public static void  registerEnvironmentBeans(ConfigurableListableBeanFactory bf,
 			@Nullable ServletContext servletContext, @Nullable ServletConfig servletConfig) {
 
+		// 把servletContext和servletConfig以Bean的形式，注册到容器里面，这样我们就可以@Autowired了  如下面例子
 		if (servletContext != null && !bf.containsBean(WebApplicationContext.SERVLET_CONTEXT_BEAN_NAME)) {
 			bf.registerSingleton(WebApplicationContext.SERVLET_CONTEXT_BEAN_NAME, servletContext);
 		}
@@ -232,6 +241,9 @@ public abstract class WebApplicationContextUtils {
 			bf.registerSingleton(ConfigurableWebApplicationContext.SERVLET_CONFIG_BEAN_NAME, servletConfig);
 		}
 
+		//这个特别特别重要：我们可以看到Spring在启动的时候，把ServletContext里面所有所有的InitParameter都拿出来了，存到一个Map里面
+		// 最后把这个Bean注册到容器里面了，Bean名称为：contextParameters
+		// 这就是为什么，后面我们可以非常非常方便拿到initParam的原因~~~
 		if (!bf.containsBean(WebApplicationContext.CONTEXT_PARAMETERS_BEAN_NAME)) {
 			Map<String, String> parameterMap = new HashMap<>();
 			if (servletContext != null) {
@@ -252,6 +264,7 @@ public abstract class WebApplicationContextUtils {
 					Collections.unmodifiableMap(parameterMap));
 		}
 
+		// 原理同上，这里吧ServletContext里面的contextAttributes，都以Bean的形式放进Bean容器里了
 		if (!bf.containsBean(WebApplicationContext.CONTEXT_ATTRIBUTES_BEAN_NAME)) {
 			Map<String, Object> attributeMap = new HashMap<>();
 			if (servletContext != null) {
@@ -272,6 +285,7 @@ public abstract class WebApplicationContextUtils {
 	 * {@link ServletConfig} parameter.
 	 * @see #initServletPropertySources(MutablePropertySources, ServletContext, ServletConfig)
 	 */
+	//将 servletContext、servletConfig 添加到 propertySources
 	public static void initServletPropertySources(MutablePropertySources propertySources, ServletContext servletContext) {
 		initServletPropertySources(propertySources, servletContext, null);
 	}

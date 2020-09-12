@@ -82,6 +82,8 @@ public abstract class RequestContextUtils {
 	 * @see WebApplicationContextUtils#getWebApplicationContext(ServletContext)
 	 * @see ContextLoader#getCurrentWebApplicationContext()
 	 */
+	// 这部分代码很简单：它先去request里面获取，然后层层递进的去找，使用方式基本同其余工具类。
+	// 备注：此工具类在controller和service也都可以使用(但是它获取到的都会是web子容器，因此一定要注意)
 	@Nullable
 	public static WebApplicationContext findWebApplicationContext(
 			HttpServletRequest request, @Nullable ServletContext servletContext) {
