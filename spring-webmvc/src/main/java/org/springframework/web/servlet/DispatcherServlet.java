@@ -1422,7 +1422,7 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 		catch (Exception ex) {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Error rendering view [" + view + "]", ex);
+				logger.debug("Error refreshrendering view [" + view + "]", ex);
 			}
 			throw ex;
 		}
